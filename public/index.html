@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multiplayer Whiteboard · draw.io</title>
+    <meta
+      name="description"
+      content="A live, multiplayer whiteboard built on draw.io. Draw together with your team in real time."
+    />
+    <link rel="preconnect" href="https://embed.diagrams.net" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- ======================= Join screen ======================= -->
+    <div id="join-overlay" class="overlay">
+      <div class="join-card">
+        <div class="brand">
+          <span class="logo">🖊️</span>
+          <h1>Multiplayer Whiteboard</h1>
+        </div>
+        <p class="tagline">
+          A shared draw.io canvas. Everyone in the same room draws on the same
+          board, live.
+        </p>
+
+        <label class="field">
+          <span>Your name</span>
+          <input
+            id="name-input"
+            type="text"
+            maxlength="40"
+            placeholder="e.g. Alex"
+            autocomplete="off"
+          />
+        </label>
+
+        <label class="field">
+          <span>Room</span>
+          <input
+            id="room-input"
+            type="text"
+            maxlength="80"
+            placeholder="team-standup"
+            autocomplete="off"
+          />
+        </label>
+
+        <button id="join-btn" class="primary">Join the board</button>
+        <p class="hint">
+          Share the room name (or the page URL) with others so you all land on
+          the same board.
+        </p>
+      </div>
+    </div>
+
+    <!-- ======================= App shell ========================= -->
+    <div id="app" class="app hidden">
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="logo">🖊️</span>
+          <div class="room-meta">
+            <strong id="room-label">room</strong>
+            <span id="status" class="status connecting">connecting…</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div id="avatars" class="avatars" title="People on this board"></div>
+          <button id="share-btn" class="ghost">🔗 Share</button>
+          <button id="panel-toggle" class="ghost" title="Toggle side panel">
+            👥 <span id="panel-count">0</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="main">
+        <div class="editor-wrap">
+          <iframe
+            id="editor"
+            title="draw.io editor"
+            allow="clipboard-read; clipboard-write"
+          ></iframe>
+          <!-- Live remote cursors are drawn on this overlay -->
+          <div id="cursor-layer" class="cursor-layer"></div>
+        </div>
+
+        <aside id="side-panel" class="side-panel">
+          <div class="panel-section">
+            <h2>People <span id="people-count" class="pill">0</span></h2>
+            <ul id="people-list" class="people-list"></ul>
+          </div>
+
+          <div class="panel-section chat-section">
+            <h2>Chat</h2>
+            <div id="chat-log" class="chat-log"></div>
+            <form id="chat-form" class="chat-form">
+              <input
+                id="chat-input"
+                type="text"
+                maxlength="500"
+                placeholder="Message the room…"
+                autocomplete="off"
+              />
+              <button type="submit" class="primary small">Send</button>
+            </form>
+          </div>
+        </aside>
+      </main>
+
+      <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

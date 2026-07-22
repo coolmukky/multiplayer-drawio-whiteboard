@@ -1,0 +1,28 @@
+{
+  "name": "multiplayer-drawio-whiteboard",
+  "version": "1.0.0",
+  "description": "A live, multiplayer whiteboard built on draw.io where a group of people can draw together in real time.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "drawio",
+    "diagrams",
+    "whiteboard",
+    "multiplayer",
+    "realtime",
+    "collaboration",
+    "websocket"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
