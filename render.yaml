@@ -1,0 +1,31 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Deploy this whiteboard to Render in one click:
+#   1. Push this repo to GitHub (done).
+#   2. In the Render dashboard: New +  ->  Blueprint.
+#   3. Connect this repository. Render reads this file and provisions the
+#      service below. Click Apply.
+#   4. When the deploy finishes you get a public https URL. Open it in a few
+#      browsers, join the same room, and draw together.
+#
+# Notes:
+#   - WebSockets work on Render web services with no extra configuration.
+#   - The free plan spins the service down after ~15 min of inactivity; the
+#     first request afterwards takes a few seconds to wake it. Bump `plan`
+#     to `starter` to keep it always-on.
+#   - Rooms are stored in memory, so a redeploy/restart clears live boards.
+
+services:
+  - type: web
+    name: multiplayer-drawio-whiteboard
+    runtime: node
+    plan: free
+    region: oregon
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
