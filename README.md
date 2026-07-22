@@ -4,12 +4,10 @@ A live, interactive whiteboard where **a group of people can draw together in
 real time** on a shared [draw.io](https://www.drawio.com) (diagrams.net) canvas.
 
 Open the page, pick a room, share the link — everyone who joins the same room
-sees the same board and every edit syncs instantly. Includes presence
-(who's on the board), live pointer indicators, and a room chat.
-
-> This is a self-contained project living in the `multiplayer-whiteboard/`
-> directory. It has no dependency on the rest of the repository and can be
-> lifted into its own repo at any time.
+sees the same board and every edit syncs instantly. Import an existing diagram,
+drag on **Cisco network stencils**, and annotate together — all changes reflect
+on every participant's screen. Includes presence (who's on the board), live
+pointer indicators, and a room chat.
 
 ---
 
@@ -17,6 +15,13 @@ sees the same board and every edit syncs instantly. Includes presence
 
 - **Real-time collaborative drawing** — the full draw.io editor, embedded, with
   every change broadcast to all participants via WebSockets.
+- **Import a diagram** — load an existing `.drawio` / `.xml` / draw.io-exported
+  `.svg` file onto the shared board; it replaces the board for everyone.
+- **Insert images to annotate** — drop a PNG/JPG/SVG onto the board (e.g. a
+  network topology screenshot) and draw/annotate over it as a group.
+- **Cisco stencils built in** — the Cisco (2019 icon set), Cisco SAFE, and
+  general networking shape libraries are pinned open in the sidebar, so anyone
+  can drag Cisco devices straight onto the shared canvas.
 - **Rooms** — anyone with the room name (or shared URL) lands on the same board.
 - **Live presence** — avatars in the top bar and a people list in the side
   panel show who is currently on the board, each with a unique colour.
@@ -25,6 +30,22 @@ sees the same board and every edit syncs instantly. Includes presence
 - **Late-join sync** — the server keeps the latest diagram so people who join
   mid-session immediately see the current state.
 - **Auto-reconnect** — the client transparently reconnects if the socket drops.
+
+## 📥 Importing diagrams & using Cisco stencils
+
+- **Import** (top bar `📂 Import`): pick a `.drawio`, `.xml`, or draw.io `.svg`
+  file. After a confirm, it becomes the shared board for the whole room.
+- **Image** (top bar `🖼️ Image`): pick any image; it's added onto the current
+  board (scaled to fit) so the group can annotate over it. Existing content is
+  kept.
+- **Cisco shapes**: they're already in the left sidebar (`Cisco`, `Cisco SAFE`,
+  `Network`). Drag any device onto the canvas — it syncs to everyone. Use
+  **More Shapes…** at the bottom of the sidebar to enable extra libraries
+  (Azure, AWS, GCP, Kubernetes, …).
+
+Both import and image insert propagate to every participant automatically —
+the change is applied locally and broadcast over the same sync channel as
+normal edits.
 
 ## 🧱 How it works
 

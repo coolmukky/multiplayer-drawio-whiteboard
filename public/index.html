@@ -67,10 +67,32 @@
 
         <div class="topbar-right">
           <div id="avatars" class="avatars" title="People on this board"></div>
+          <button
+            id="import-btn"
+            class="ghost"
+            title="Import a diagram (.drawio / .xml / .svg) onto the shared board"
+          >
+            📂 Import
+          </button>
+          <button
+            id="image-btn"
+            class="ghost"
+            title="Add an image (PNG/JPG/SVG) to annotate over"
+          >
+            🖼️ Image
+          </button>
           <button id="share-btn" class="ghost">🔗 Share</button>
           <button id="panel-toggle" class="ghost" title="Toggle side panel">
             👥 <span id="panel-count">0</span>
           </button>
+          <!-- Hidden file inputs driven by the buttons above -->
+          <input
+            id="file-diagram"
+            type="file"
+            accept=".drawio,.xml,.svg,application/xml,text/xml,image/svg+xml"
+            hidden
+          />
+          <input id="file-image" type="file" accept="image/*" hidden />
         </div>
       </header>
 

@@ -17,10 +17,29 @@
   'use strict';
 
   const DRAWIO_ORIGIN = 'https://embed.diagrams.net';
-  // ui=min keeps a clean toolbar; proto=json enables the message protocol.
+  // ui=min keeps a clean toolbar; proto=json enables the message protocol;
+  // configure=1 lets us push a config (to pin the Cisco stencils open) before
+  // the editor initialises; libraries=1 shows the shape library panel.
   const DRAWIO_URL =
     DRAWIO_ORIGIN +
-    '/?embed=1&proto=json&spin=1&libraries=1&ui=min&noExitBtn=1&noSaveBtn=1&saveAndExit=0&modified=unsavedChanges';
+    '/?embed=1&proto=json&configure=1&spin=1&libraries=1&ui=min&noExitBtn=1&noSaveBtn=1&saveAndExit=0&modified=unsavedChanges';
+
+  // draw.io editor configuration. We pin a set of networking libraries open —
+  // including the built-in Cisco stencils — so every participant immediately
+  // has Cisco network shapes to drag onto the shared board.
+  //   cisco19    -> Networking / Cisco (2019 icon set)
+  //   cisco_safe -> Cisco SAFE security reference shapes
+  //   network    -> general networking (classic Cisco-style devices, cloud...)
+  const DRAWIO_CONFIG = {
+    // Libraries pinned open in the left sidebar on load.
+    defaultLibraries: 'general;network;cisco19;cisco_safe;rack',
+    // Libraries offered in the "More Shapes" dialog.
+    enabledLibraries: [
+      'general', 'network', 'cisco19', 'cisco_safe', 'rack',
+      'azure', 'aws4', 'gcp2', 'kubernetes', 'veeam2',
+      'uml', 'er', 'flowchart', 'basic', 'arrows2', 'mockup', 'signs',
+    ],
+  };
 
   const EMPTY_DIAGRAM =
     '<mxGraphModel dx="800" dy="600" grid="1" gridSize="10" guides="1" ' +
@@ -94,6 +113,133 @@
     postToEditor({ action: 'load', autosave: 1, xml: xml || EMPTY_DIAGRAM });
   }
 
+  // Apply new board XML locally AND push it to every peer. Used by import /
+  // image insert so the change reflects on everyone's board immediately.
+  function applyAndBroadcast(xml) {
+    currentXml = xml;
+    loadIntoEditor(xml); // suppresses the echo autosave...
+    sendWs({ type: 'diagram', xml }); // ...so we broadcast explicitly, once.
+  }
+
+  // ---- Import diagram / insert image -------------------------------------
+  // Pull draw.io XML out of a file's text. Handles raw .drawio/.xml
+  // (<mxfile>/<mxGraphModel>) and draw.io-exported .svg (XML in a content="").
+  function extractDrawioXml(text, name) {
+    if (/\.svg$/i.test(name) || /<svg[\s>]/i.test(text)) {
+      const m = text.match(/content="([^"]*)"/i);
+      if (m) {
+        const decoded = htmlDecode(m[1]);
+        if (/<mx(file|GraphModel)[\s>]/.test(decoded)) return decoded;
+      }
+    }
+    if (/<mx(file|GraphModel)[\s>]/.test(text)) return text;
+    return null;
+  }
+
+  function htmlDecode(s) {
+    const t = document.createElement('textarea');
+    t.innerHTML = s;
+    return t.value;
+  }
+
+  // Insert a raw <mxCell> string into an existing model, just before </root>.
+  function injectCell(xml, cellXml) {
+    const idx = xml.lastIndexOf('</root>');
+    if (idx === -1) return xml;
+    return xml.slice(0, idx) + cellXml + xml.slice(idx);
+  }
+
+  function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = reject;
+      r.readAsText(file);
+    });
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  function measureImage(dataUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve({ w: 320, h: 240 });
+      img.src = dataUrl;
+    });
+  }
+
+  function imageCellXml(dataUrl, w, h) {
+    const id = 'img_' + Math.random().toString(36).slice(2, 9);
+    // draw.io stores image data URIs with the ";base64" dropped (a semicolon
+    // would otherwise split the style string); it re-adds it when rendering.
+    const styleUri = dataUrl.replace(';base64,', ',');
+    const style =
+      'shape=image;imageAspect=0;aspect=fixed;verticalLabelPosition=bottom;' +
+      'verticalAlign=top;image=' + styleUri + ';';
+    return (
+      `<mxCell id="${id}" style="${style}" vertex="1" parent="1">` +
+      `<mxGeometry x="40" y="40" width="${w}" height="${h}" as="geometry"/>` +
+      `</mxCell>`
+    );
+  }
+
+  async function handleDiagramFile(file) {
+    if (!editorReady) {
+      showToast('Board is still loading — try again in a moment');
+      return;
+    }
+    try {
+      const text = await readFileAsText(file);
+      const xml = extractDrawioXml(text, file.name);
+      if (!xml) {
+        showToast('That file is not a draw.io diagram');
+        return;
+      }
+      if (
+        !confirm(
+          'Replace the current board with the imported diagram for everyone in the room?',
+        )
+      ) {
+        return;
+      }
+      applyAndBroadcast(xml);
+      showToast('Diagram imported for the whole room');
+    } catch {
+      showToast('Could not read that file');
+    }
+  }
+
+  async function handleImageFile(file) {
+    if (!editorReady) {
+      showToast('Board is still loading — try again in a moment');
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      let { w, h } = await measureImage(dataUrl);
+      // Scale so the longest side is at most 480px.
+      const max = 480;
+      if (w > max || h > max) {
+        const s = max / Math.max(w, h);
+        w = Math.round(w * s);
+        h = Math.round(h * s);
+      }
+      const merged = injectCell(currentXml, imageCellXml(dataUrl, w, h));
+      applyAndBroadcast(merged);
+      showToast('Image added — everyone can annotate over it');
+    } catch {
+      showToast('Could not add that image');
+    }
+  }
+
   window.addEventListener('message', (evt) => {
     if (evt.origin !== DRAWIO_ORIGIN) return;
     if (typeof evt.data !== 'string' || evt.data.length === 0) return;
@@ -106,6 +252,12 @@
     }
 
     switch (msg.event) {
+      case 'configure': {
+        // Sent because of configure=1. Push our config (Cisco stencils etc.)
+        // before the editor finishes initialising.
+        postToEditor({ action: 'configure', config: DRAWIO_CONFIG });
+        break;
+      }
       case 'init': {
         editorReady = true;
         // Load whatever we have (either remote state received during join, or
@@ -357,6 +509,22 @@
 
   el('panel-toggle').addEventListener('click', () => {
     sidePanel.classList.toggle('collapsed');
+  });
+
+  // Import diagram / insert image via hidden file inputs.
+  const fileDiagram = el('file-diagram');
+  const fileImage = el('file-image');
+  el('import-btn').addEventListener('click', () => fileDiagram.click());
+  el('image-btn').addEventListener('click', () => fileImage.click());
+  fileDiagram.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) handleDiagramFile(file);
+    fileDiagram.value = ''; // allow re-selecting the same file
+  });
+  fileImage.addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) handleImageFile(file);
+    fileImage.value = '';
   });
 
   // ---- Join flow ----------------------------------------------------------
